@@ -2,11 +2,21 @@
 
 import { useState, useRef, useEffect } from "react";
 import ChatMessage from "@/components/chat/ChatMessage";
-import ChatInput from "@/components/chat/ChatInput";
+import ChatInput, { ChatInputRef } from "@/components/chat/ChatInput";
 import { Header } from "@/components/Header";
 import SourcesAccordion from "@/components/chat/SourcesAccordion";
 import { generateMockResponse } from "@/lib/mockData";
-import { queryChatApi, ApiResponse } from "@/lib/apiService";
+import {
+  queryAgentApi,
+  ApiResponse,
+  generateSessionId,
+  resetSession,
+  deleteSession,
+  getSessionStatus,
+  SessionStatusResponse
+} from "@/lib/apiService";
+import { Button } from "@/components/ui/button";
+import { RotateCcw, Plus, Users } from "lucide-react";
 
 interface Source {
   record_id: string;
@@ -27,15 +37,43 @@ export default function ChatPage() {
     {
       id: "welcome-message",
       role: "assistant",
-      content: "Hello! I'm your Smart Library Assistant. How can I help you today?",
+      content: "Hello! I'm your Christian Library Assistant. How can I help you with theological research today?",
       timestamp: new Date(),
     },
   ]);
-  const [conversationHistory, setConversationHistory] = useState<any[]>([]);
+  const [sessionId, setSessionId] = useState<string>(() => {
+    // Try to get existing session from localStorage, or generate new one
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('cla-session-id');
+      if (saved) return saved;
+    }
+    return generateSessionId();
+  });
+  const [sessionStatus, setSessionStatus] = useState<SessionStatusResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [useMockData, setUseMockData] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<ChatInputRef>(null);
   const [lastUserMessageId, setLastUserMessageId] = useState<string | null>(null);
+
+  // Save session ID to localStorage when it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('cla-session-id', sessionId);
+    }
+  }, [sessionId]);
+
+  // Fetch session status on component mount and when session changes
+  useEffect(() => {
+    if (!useMockData && sessionId) {
+      getSessionStatus(sessionId)
+        .then(setSessionStatus)
+        .catch(() => {
+          // Session might not exist yet, which is fine
+          setSessionStatus(null);
+        });
+    }
+  }, [sessionId, useMockData]);
 
   // Scroll to position the latest user message at the top when messages change
   useEffect(() => {
@@ -79,14 +117,20 @@ export default function ChatPage() {
 
       if (useMockData) {
         // Use mock data from the generateMockResponse function
-        responseData = generateMockResponse(content, conversationHistory);
+        responseData = generateMockResponse(content, [], sessionId);
       } else {
-        // Make API call using the apiService
-        responseData = await queryChatApi(content, conversationHistory);
+        // Make API call using the new agent API with session management
+        responseData = await queryAgentApi(content, sessionId);
       }
 
       const rspContent = responseData.answer;
-      setConversationHistory(responseData.conversation_history);
+
+      // Update session status after successful response
+      if (!useMockData) {
+        getSessionStatus(sessionId)
+          .then(setSessionStatus)
+          .catch(console.error);
+      }
 
       // Add assistant reply with sources
       const assistantMessage: Message = {
@@ -101,11 +145,12 @@ export default function ChatPage() {
     } catch (error) {
       console.error("Error sending message:", error);
 
-      // Add error message
+      // Add error message with more specific error handling
       const errorMessage: Message = {
         id: `error-${id}`,
         role: "assistant",
-        content:
+        content: error instanceof Error ?
+          error.message :
           "Sorry, I encountered an error while processing your request. Please try again later.",
         timestamp: new Date(),
       };
@@ -120,13 +165,160 @@ export default function ChatPage() {
     setUseMockData(!useMockData);
   };
 
+  const handleResetSession = async () => {
+    if (useMockData) {
+      // For mock data, just clear messages and UI state
+      setMessages([
+        {
+          id: "welcome-message",
+          role: "assistant",
+          content: "Hello! I'm your Christian Library Assistant. How can I help you with theological research today?",
+          timestamp: new Date(),
+        },
+      ]);
+
+      // Clear input field and reset UI state
+      chatInputRef.current?.clear();
+      setLastUserMessageId(null);
+
+      // Scroll to top
+      if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      // Focus input field
+      setTimeout(() => {
+        chatInputRef.current?.focus();
+      }, 100);
+
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await resetSession(sessionId);
+
+      // Clear messages and reset to welcome message
+      setMessages([
+        {
+          id: "welcome-message",
+          role: "assistant",
+          content: "Hello! I'm your Christian Library Assistant. How can I help you with theological research today?",
+          timestamp: new Date(),
+        },
+      ]);
+
+      // Clear input field and reset UI state
+      chatInputRef.current?.clear();
+      setLastUserMessageId(null);
+
+      // Scroll to top
+      if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      // Refresh session status
+      const status = await getSessionStatus(sessionId);
+      setSessionStatus(status);
+
+      // Focus input field
+      setTimeout(() => {
+        chatInputRef.current?.focus();
+      }, 100);
+    } catch (error) {
+      console.error("Error resetting session:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleNewSession = async () => {
+    try {
+      setIsLoading(true);
+
+      // Delete old session if not using mock data
+      if (!useMockData) {
+        await deleteSession(sessionId);
+      }
+
+      // Generate new session ID
+      const newSessionId = generateSessionId();
+      setSessionId(newSessionId);
+
+      // Clear messages and reset to welcome message
+      setMessages([
+        {
+          id: "welcome-message",
+          role: "assistant",
+          content: "Hello! I'm your Christian Library Assistant. How can I help you with theological research today?",
+          timestamp: new Date(),
+        },
+      ]);
+
+      // Clear input field and reset UI state
+      chatInputRef.current?.clear();
+      setLastUserMessageId(null);
+
+      // Scroll to top
+      if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      setSessionStatus(null);
+
+      // Focus input field
+      setTimeout(() => {
+        chatInputRef.current?.focus();
+      }, 100);
+    } catch (error) {
+      console.error("Error creating new session:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] max-h-[calc(100vh-64px)] overflow-hidden">
       <Header />
 
       <div className="mt-4 flex-1 flex flex-col items-center overflow-hidden">
-        {/* Mock data toggle */}
-        <div className="w-full max-w-4xl mb-2 px-4 flex justify-end">
+        {/* Controls panel */}
+        <div className="w-full max-w-4xl mb-2 px-4 flex justify-between items-center">
+          {/* Session info and controls */}
+          <div className="flex items-center space-x-4">
+            {!useMockData && sessionStatus && (
+              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                <Users className="h-4 w-4" />
+                <span>{sessionStatus.message_count} messages</span>
+              </div>
+            )}
+
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleResetSession}
+                disabled={isLoading}
+                className="h-8"
+              >
+                <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                Reset
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNewSession}
+                disabled={isLoading}
+                className="h-8"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                New Session
+              </Button>
+            </div>
+          </div>
+
+          {/* Mock data toggle */}
           <div className="flex items-center space-x-2">
             <span className="text-sm text-muted-foreground">Use mock data:</span>
             <label className="relative inline-flex items-center cursor-pointer">
@@ -165,7 +357,7 @@ export default function ChatPage() {
           </div>
 
           <div className="px-4 py-4 pb-6 border-t">
-            <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
+            <ChatInput ref={chatInputRef} onSendMessage={handleSendMessage} isLoading={isLoading} />
           </div>
         </div>
       </div>

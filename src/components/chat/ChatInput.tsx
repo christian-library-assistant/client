@@ -1,4 +1,4 @@
-import { useState, KeyboardEvent, useRef, useEffect } from "react";
+import { useState, KeyboardEvent, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 import { Send, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -8,12 +8,33 @@ interface ChatInputProps {
   isLoading: boolean;
 }
 
-export default function ChatInput({
+export interface ChatInputRef {
+  clear: () => void;
+  focus: () => void;
+}
+
+const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(function ChatInput({
   onSendMessage,
   isLoading,
-}: ChatInputProps) {
+}, ref) {
   const [message, setMessage] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Expose methods to parent component
+  useImperativeHandle(ref, () => ({
+    clear: () => {
+      setMessage("");
+      // Reset textarea height
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+      }
+    },
+    focus: () => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+      }
+    }
+  }));
 
   // Auto-focus the input field when loading state changes to false
   useEffect(() => {
@@ -110,4 +131,6 @@ export default function ChatInput({
       </div>
     </form>
   );
-}
+});
+
+export default ChatInput;

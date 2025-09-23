@@ -8,15 +8,16 @@ export interface MockResponse {
     citation_text: string;
   }>;
   conversation_history: Array<{
-    role: string;
+    role: "user" | "assistant";
     content: string;
   }>;
+  session_id: string;
 }
 
 // Function to generate a mock response based on the user query
-export function generateMockResponse(query: string, previousHistory: any[]): MockResponse {
+export function generateMockResponse(query: string, previousHistory: Array<{ role: "user" | "assistant"; content: string; }>, sessionId: string = "mock-session"): MockResponse {
   // Create a new conversation history array with the current query
-  const updatedHistory = [...previousHistory, { role: "user", content: query }];
+  const updatedHistory = [...previousHistory, { role: "user" as const, content: query }];
 
   let mockAnswer = "";
   let mockSources = [];
@@ -121,5 +122,6 @@ export function generateMockResponse(query: string, previousHistory: any[]): Moc
     answer: mockAnswer,
     sources: mockSources,
     conversation_history: updatedHistory,
+    session_id: sessionId,
   };
 }
