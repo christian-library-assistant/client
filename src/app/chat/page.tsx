@@ -5,6 +5,7 @@ import ChatMessage from "@/components/chat/ChatMessage";
 import ChatInput, { ChatInputRef } from "@/components/chat/ChatInput";
 import { Header } from "@/components/Header";
 import SourcesAccordion from "@/components/chat/SourcesAccordion";
+import FilterPanel from "@/components/chat/FilterPanel";
 import { generateMockResponse } from "@/lib/mockData";
 import {
   queryAgentApi,
@@ -52,6 +53,8 @@ export default function ChatPage() {
   const [sessionStatus, setSessionStatus] = useState<SessionStatusResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [useMockData, setUseMockData] = useState(false);
+  const [selectedAuthors, setSelectedAuthors] = useState<string[]>([]);
+  const [selectedWorks, setSelectedWorks] = useState<string[]>([]);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<ChatInputRef>(null);
   const [lastUserMessageId, setLastUserMessageId] = useState<string | null>(null);
@@ -67,7 +70,16 @@ export default function ChatPage() {
   useEffect(() => {
     if (!useMockData && sessionId) {
       getSessionStatus(sessionId)
-        .then(setSessionStatus)
+        .then((status) => {
+          // Check if session exists
+          if (status.exists === false) {
+            // Session expired or doesn't exist
+            console.log('Session not found or expired, will create new one on next query');
+            setSessionStatus(null);
+          } else {
+            setSessionStatus(status);
+          }
+        })
         .catch(() => {
           // Session might not exist yet, which is fine
           setSessionStatus(null);
@@ -119,15 +131,27 @@ export default function ChatPage() {
         // Use mock data from the generateMockResponse function
         responseData = generateMockResponse(content, [], sessionId);
       } else {
-        // Make API call using the new agent API with session management
-        responseData = await queryAgentApi(content, sessionId);
+        // Make API call using the new agent API with session management and filters
+        responseData = await queryAgentApi(
+          content,
+          sessionId,
+          selectedAuthors.length > 0 ? selectedAuthors : undefined,
+          selectedWorks.length > 0 ? selectedWorks : undefined
+        );
+
+        // Update session ID if server returned a new one (e.g., after session expiry)
+        if (responseData.session_id && responseData.session_id !== sessionId) {
+          console.log(`Session updated from ${sessionId} to ${responseData.session_id}`);
+          setSessionId(responseData.session_id);
+        }
       }
 
       const rspContent = responseData.answer;
 
       // Update session status after successful response
       if (!useMockData) {
-        getSessionStatus(sessionId)
+        const currentSessionId = responseData.session_id || sessionId;
+        getSessionStatus(currentSessionId)
           .then(setSessionStatus)
           .catch(console.error);
       }
@@ -286,7 +310,7 @@ export default function ChatPage() {
         <div className="w-full max-w-4xl mb-2 px-4 flex justify-between items-center">
           {/* Session info and controls */}
           <div className="flex items-center space-x-4">
-            {!useMockData && sessionStatus && (
+            {!useMockData && sessionStatus && sessionStatus.message_count !== undefined && (
               <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                 <Users className="h-4 w-4" />
                 <span>{sessionStatus.message_count} messages</span>
@@ -356,7 +380,13 @@ export default function ChatPage() {
             )}
           </div>
 
-          <div className="px-4 py-4 pb-6 border-t">
+          <div className="px-4 py-4 pb-6 border-t space-y-3">
+            <FilterPanel
+              selectedAuthors={selectedAuthors}
+              selectedWorks={selectedWorks}
+              onAuthorsChange={setSelectedAuthors}
+              onWorksChange={setSelectedWorks}
+            />
             <ChatInput ref={chatInputRef} onSendMessage={handleSendMessage} isLoading={isLoading} />
           </div>
         </div>

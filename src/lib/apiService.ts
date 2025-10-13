@@ -22,11 +22,45 @@ export interface ApiResponse {
 
 export interface ApiRequestBody {
   query: string;
+  authors?: string[];
+  works?: string[];
 }
 
 export interface SessionStatusResponse {
-  message_count: number;
-  created_at: string;
+  message_count?: number;
+  created_at?: string;
+  exists?: boolean;
+  message?: string;
+  session_id?: string;
+  total_sessions?: number;
+}
+
+export interface Author {
+  author_id: string;
+  similarity_score: number;
+}
+
+export interface Work {
+  work_id: string;
+  similarity_score: number;
+}
+
+export interface AuthorsResponse {
+  query?: string;
+  total_matches?: number;
+  matches?: Author[];
+  authors?: string[];
+  total?: number;
+  note?: string;
+}
+
+export interface WorksResponse {
+  query?: string;
+  total_matches?: number;
+  matches?: Work[];
+  works?: string[];
+  total?: number;
+  note?: string;
 }
 
 /**
@@ -34,17 +68,29 @@ export interface SessionStatusResponse {
  *
  * @param query - The user's query string
  * @param sessionId - The session ID for conversation continuity
+ * @param authors - Optional list of author IDs to filter search results
+ * @param works - Optional list of work IDs to filter search results
  * @returns Promise with the API response
  */
 export async function queryAgentApi(
   query: string,
-  sessionId: string
+  sessionId: string,
+  authors?: string[],
+  works?: string[]
 ): Promise<ApiResponse> {
   const apiUrl = getApiUrl(API_CONFIG.endpoints.queryAgent);
 
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.timeout);
+
+    const requestBody: ApiRequestBody = { query };
+    if (authors && authors.length > 0) {
+      requestBody.authors = authors;
+    }
+    if (works && works.length > 0) {
+      requestBody.works = works;
+    }
 
     const response = await fetch(apiUrl, {
       method: "POST",
@@ -53,9 +99,7 @@ export async function queryAgentApi(
         Accept: "application/json",
         "X-Session-ID": sessionId,
       },
-      body: JSON.stringify({
-        query,
-      } as ApiRequestBody),
+      body: JSON.stringify(requestBody),
       signal: controller.signal,
     });
 
@@ -175,6 +219,66 @@ export function generateSessionId(): string {
   }
   // Fallback for environments without crypto.randomUUID
   return `session-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+}
+
+/**
+ * Search for authors in the CCEL database
+ *
+ * @param query - Optional search query for fuzzy matching. If not provided, returns all authors.
+ * @returns Promise with list of matching authors
+ */
+export async function searchAuthors(query?: string): Promise<AuthorsResponse> {
+  const apiUrl = getApiUrl(API_CONFIG.endpoints.authors);
+  const url = query ? `${apiUrl}?query=${encodeURIComponent(query)}` : apiUrl;
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Authors search failed with status ${response.status}`);
+    }
+
+    return (await response.json()) as AuthorsResponse;
+  } catch (error) {
+    console.error("Error searching authors:", error);
+    throw error;
+  }
+}
+
+/**
+ * Search for works in the CCEL database
+ *
+ * @param query - Optional search query for fuzzy matching. If not provided, returns all works.
+ * @returns Promise with list of matching works
+ */
+export async function searchWorks(query?: string): Promise<WorksResponse> {
+  const apiUrl = getApiUrl(API_CONFIG.endpoints.works);
+  const url = query ? `${apiUrl}?query=${encodeURIComponent(query)}` : apiUrl;
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Works search failed with status ${response.status}`);
+    }
+
+    return (await response.json()) as WorksResponse;
+  } catch (error) {
+    console.error("Error searching works:", error);
+    throw error;
+  }
 }
 
 // Legacy function for backward compatibility - will be removed in future versions

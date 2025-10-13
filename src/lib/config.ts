@@ -9,11 +9,13 @@ export const API_CONFIG = {
     queryAgent: '/query-agent',
     sessionStatus: '/query-agent-sessions',
     sessionReset: '/query-agent-reset',
-    sessionDelete: '/query-agent-session'
+    sessionDelete: '/query-agent-session',
+    authors: '/authors',
+    works: '/works'
   },
 
   // Request configuration
-  timeout: 30000, // 30 seconds for agent processing
+  timeout: 90000, // 30 seconds for agent processing
 } as const;
 
 /**
