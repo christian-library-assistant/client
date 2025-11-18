@@ -2,16 +2,16 @@
 
 export const API_CONFIG = {
   // Base URL for the Christian Library Assistant API
-  baseUrl: process.env.url || 'http://localhost:8000',
+  baseUrl: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
 
   // API endpoints
   endpoints: {
-    queryAgent: '/query-agent',
-    sessionStatus: '/query-agent-sessions',
-    sessionReset: '/query-agent-reset',
-    sessionDelete: '/query-agent-session',
-    authors: '/authors',
-    works: '/works'
+    queryAgent: "/query-agent",
+    sessionStatus: "/query-agent-sessions",
+    sessionReset: "/query-agent-reset",
+    sessionDelete: "/query-agent-session",
+    authors: "/authors",
+    works: "/works",
   },
 
   // Request configuration
