@@ -239,13 +239,20 @@ export default function FilterPanel({
                     <button
                       key={author.author_id}
                       onClick={() => handleAddAuthor(author.author_id)}
-                      className="w-full px-4 py-2 text-left hover:bg-accent flex justify-between items-center"
+                      className="w-full px-4 py-3 text-left hover:bg-accent"
                       disabled={selectedAuthors.includes(author.author_id)}
                     >
-                      <span className="text-sm">{author.author_id}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {author.similarity_score}% match
-                      </span>
+                      <div className="flex flex-col space-y-1">
+                        <div className="text-sm font-medium">{author.author_name}</div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-muted-foreground">{author.author_id}</span>
+                          {Object.keys(author.associated_works).length > 0 && (
+                            <span className="text-xs text-muted-foreground">
+                              {Object.keys(author.associated_works).length} work(s)
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -283,13 +290,20 @@ export default function FilterPanel({
                     <button
                       key={work.work_id}
                       onClick={() => handleAddWork(work.work_id)}
-                      className="w-full px-4 py-2 text-left hover:bg-accent flex justify-between items-center"
+                      className="w-full px-4 py-3 text-left hover:bg-accent"
                       disabled={selectedWorks.includes(work.work_id)}
                     >
-                      <span className="text-sm">{work.work_id}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {work.similarity_score}% match
-                      </span>
+                      <div className="flex flex-col space-y-1">
+                        <div className="text-sm font-medium">{work.work_name}</div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-muted-foreground">{work.work_id}</span>
+                          {work.authors.length > 0 && (
+                            <span className="text-xs text-muted-foreground truncate max-w-xs">
+                              By: {work.authors.map(a => a.author_name).join(', ')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </button>
                   ))}
                 </div>

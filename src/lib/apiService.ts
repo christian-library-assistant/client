@@ -37,12 +37,17 @@ export interface SessionStatusResponse {
 
 export interface Author {
   author_id: string;
-  similarity_score: number;
+  author_name: string;
+  associated_works: Record<string, string>; // Maps work IDs to work names
 }
 
 export interface Work {
   work_id: string;
-  similarity_score: number;
+  work_name: string;
+  authors: Array<{
+    author_id: string;
+    author_name: string;
+  }>;
 }
 
 export interface AuthorsResponse {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 interface Source {
@@ -18,6 +18,41 @@ export default function SourcesAccordion({ sources }: SourcesAccordionProps) {
   const toggleAccordion = () => {
     setIsOpen(!isOpen);
   };
+
+  // Auto-open accordion when anchor link is clicked
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      if (hash.startsWith('#source-')) {
+        setIsOpen(true);
+        // Small delay to ensure accordion is open before scrolling
+        setTimeout(() => {
+          const element = document.querySelector(hash);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 300);
+      }
+    };
+
+    // Listen for hash changes
+    window.addEventListener('hashchange', handleHashChange);
+
+    // Also handle clicks on anchor links within the page
+    const handleAnchorClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'A' && target.getAttribute('href')?.startsWith('#source-')) {
+        handleHashChange();
+      }
+    };
+
+    document.addEventListener('click', handleAnchorClick);
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+      document.removeEventListener('click', handleAnchorClick);
+    };
+  }, []);
 
   const toggleCitation = (recordId: string) => {
     setExpandedCitations(prev => ({
@@ -85,12 +120,13 @@ export default function SourcesAccordion({ sources }: SourcesAccordionProps) {
       >
         <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
           <ul className="space-y-3">
-            {sources.map(source => {
+            {sources.map((source, index) => {
               const isExpanded = expandedCitations[source.record_id];
               const needsExpansion = source.citation_text.split("\n").length > 2;
+              const sourceNumber = index + 1;
 
               return (
-                <li key={source.record_id} className="text-sm">
+                <li key={source.record_id} id={`source-${sourceNumber}`} className="text-sm scroll-mt-4">
                   <div className="flex flex-col">
                     <a
                       href={source.link}
@@ -113,7 +149,7 @@ export default function SourcesAccordion({ sources }: SourcesAccordionProps) {
                         />
                       </svg>
                       <span className="text-blue-600 dark:text-blue-400 group-hover:text-blue-800 dark:group-hover:text-blue-300 group-hover:underline">
-                        Source {sources.indexOf(source) + 1}
+                        Source {sourceNumber}
                       </span>
                     </a>
 
