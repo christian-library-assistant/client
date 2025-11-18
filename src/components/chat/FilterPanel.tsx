@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Search, X, ChevronDown, ChevronUp, Filter } from "lucide-react";
+import { Search, X, ChevronDown, ChevronUp, Filter, User, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { searchAuthors, searchWorks, type Author, type Work } from "@/lib/apiService";
@@ -149,11 +149,22 @@ export default function FilterPanel({
       >
         <div className="flex items-center space-x-2">
           <Filter className="h-4 w-4" />
-          <span className="text-sm font-medium">Filter by Author or Work</span>
+          <span className="text-sm font-medium">Search Filters</span>
           {hasFilters && (
-            <span className="text-xs bg-primary text-primary-foreground rounded-full px-2 py-0.5">
-              {selectedAuthors.length + selectedWorks.length}
-            </span>
+            <div className="flex items-center space-x-1">
+              {selectedAuthors.length > 0 && (
+                <span className="text-xs bg-blue-500 text-white rounded-full px-2 py-0.5 flex items-center gap-1">
+                  <User className="h-3 w-3" />
+                  {selectedAuthors.length}
+                </span>
+              )}
+              {selectedWorks.length > 0 && (
+                <span className="text-xs bg-purple-500 text-white rounded-full px-2 py-0.5 flex items-center gap-1">
+                  <BookOpen className="h-3 w-3" />
+                  {selectedWorks.length}
+                </span>
+              )}
+            </div>
           )}
         </div>
         {isExpanded ? (
@@ -168,56 +179,70 @@ export default function FilterPanel({
         <div className="p-4 space-y-4 border-t">
           {/* Selected Filters */}
           {hasFilters && (
-            <div className="flex flex-wrap gap-2 items-center">
-              <span className="text-xs text-muted-foreground">Active filters:</span>
-              {selectedAuthors.map((authorId) => (
-                <div
-                  key={authorId}
-                  className="flex items-center space-x-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100 rounded-full px-3 py-1 text-xs"
+            <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">Active Filters</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearAll}
+                  className="h-6 text-xs hover:bg-muted"
                 >
-                  <span>{authorId}</span>
-                  <button
-                    onClick={() => handleRemoveAuthor(authorId)}
-                    className="hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full p-0.5"
+                  Clear all
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {selectedAuthors.map((authorId) => (
+                  <div
+                    key={authorId}
+                    className="flex items-center space-x-1 bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-100 rounded-md px-2.5 py-1.5 text-xs font-medium border border-blue-200 dark:border-blue-800"
                   >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
-              {selectedWorks.map((workId) => (
-                <div
-                  key={workId}
-                  className="flex items-center space-x-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-100 rounded-full px-3 py-1 text-xs"
-                >
-                  <span>{workId}</span>
-                  <button
-                    onClick={() => handleRemoveWork(workId)}
-                    className="hover:bg-purple-200 dark:hover:bg-purple-800 rounded-full p-0.5"
+                    <User className="h-3 w-3" />
+                    <span>{authorId}</span>
+                    <button
+                      onClick={() => handleRemoveAuthor(authorId)}
+                      className="hover:bg-blue-200 dark:hover:bg-blue-800 rounded-sm p-0.5 ml-1"
+                      aria-label={`Remove ${authorId} author filter`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+                {selectedWorks.map((workId) => (
+                  <div
+                    key={workId}
+                    className="flex items-center space-x-1 bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-100 rounded-md px-2.5 py-1.5 text-xs font-medium border border-purple-200 dark:border-purple-800"
                   >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleClearAll}
-                className="h-6 text-xs"
-              >
-                Clear all
-              </Button>
+                    <BookOpen className="h-3 w-3" />
+                    <span>{workId}</span>
+                    <button
+                      onClick={() => handleRemoveWork(workId)}
+                      className="hover:bg-purple-200 dark:hover:bg-purple-800 rounded-sm p-0.5 ml-1"
+                      aria-label={`Remove ${workId} work filter`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
           {/* Author Search */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Author</label>
+            <div className="flex items-center space-x-2">
+              <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <label className="text-sm font-medium">Filter by Author</label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Search results will only include content from selected authors
+            </p>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 ref={authorInputRef}
                 type="text"
-                placeholder="Search for an author..."
+                placeholder="e.g., Augustine, Aquinas, Calvin..."
                 value={authorQuery}
                 onChange={(e) => setAuthorQuery(e.target.value)}
                 onFocus={() => {
@@ -262,13 +287,19 @@ export default function FilterPanel({
 
           {/* Work Search */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Work</label>
+            <div className="flex items-center space-x-2">
+              <BookOpen className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              <label className="text-sm font-medium">Filter by Work</label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Search results will only include content from selected works/books
+            </p>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 ref={workInputRef}
                 type="text"
-                placeholder="Search for a work..."
+                placeholder="e.g., Confessions, City of God, Summa..."
                 value={workQuery}
                 onChange={(e) => setWorkQuery(e.target.value)}
                 onFocus={() => {
@@ -312,9 +343,17 @@ export default function FilterPanel({
           </div>
 
           {/* Help Text */}
-          <p className="text-xs text-muted-foreground">
-            Type at least 2 characters to search. Filters constrain all searches to the selected authors or works.
-          </p>
+          <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/30 rounded-lg p-3 space-y-1">
+            <p className="text-xs font-medium text-blue-900 dark:text-blue-100">
+              💡 How filters work
+            </p>
+            <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1 list-disc list-inside">
+              <li><strong className="text-blue-600 dark:text-blue-400">Authors</strong> (blue) - Limit results to writings by specific theologians</li>
+              <li><strong className="text-purple-600 dark:text-purple-400">Works</strong> (purple) - Limit results to specific books or documents</li>
+              <li>Type at least 2 characters to search for authors or works</li>
+              <li>Multiple filters narrow your search further</li>
+            </ul>
+          </div>
         </div>
       )}
     </div>
