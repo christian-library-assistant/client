@@ -68,6 +68,90 @@ export interface WorksResponse {
   note?: string;
 }
 
+// Token Usage Stats Types
+export interface EndpointStats {
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens?: number;
+  requests: number;
+}
+
+export interface ModelStats {
+  input_tokens: number;
+  output_tokens: number;
+  requests: number;
+}
+
+export interface UsagePeriod {
+  days: number;
+  start_date: string;
+  end_date: string;
+  days_with_data: number;
+}
+
+export interface UsageTotals {
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  requests: number;
+}
+
+export interface UsageAverages {
+  tokens_per_day: number;
+  requests_per_day: number;
+  tokens_per_request: number;
+}
+
+export interface UsageStatsData {
+  period: UsagePeriod;
+  totals: UsageTotals;
+  by_endpoint: Record<string, EndpointStats>;
+  by_model: Record<string, ModelStats>;
+  averages: UsageAverages;
+}
+
+export interface UsageStatsResponse {
+  status: string;
+  data: UsageStatsData;
+}
+
+export interface EndpointDailyStats {
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  requests: number;
+  models: Record<string, ModelStats>;
+}
+
+export interface DailyUsageData {
+  date: string;
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  requests: number;
+  by_endpoint: Record<string, EndpointDailyStats>;
+}
+
+export interface DailyUsageResponse {
+  status: string;
+  days_requested: number;
+  data: DailyUsageData[];
+}
+
+export interface TodayUsageData {
+  date: string;
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  requests: number;
+  by_endpoint: Record<string, EndpointDailyStats>;
+}
+
+export interface TodayUsageResponse {
+  status: string;
+  data: TodayUsageData;
+}
+
 /**
  * Sends a query to the Christian Library Assistant API with agentic conversation
  *
@@ -296,4 +380,92 @@ export async function queryChatApi(
   // Generate a temporary session ID for legacy calls
   const tempSessionId = generateSessionId();
   return queryAgentApi(query, tempSessionId);
+}
+
+/**
+ * Get aggregated usage statistics for a specified number of days
+ *
+ * @param days - Number of days to include in the statistics (1-365, default: 30)
+ * @returns Promise with usage statistics
+ */
+export async function getUsageStats(days: number = 30): Promise<UsageStatsResponse> {
+  const apiUrl = getApiUrl(API_CONFIG.endpoints.statsUsage);
+  const url = `${apiUrl}?days=${days}`;
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Usage stats request failed with status ${response.status}`);
+    }
+
+    return (await response.json()) as UsageStatsResponse;
+  } catch (error) {
+    console.error("Error fetching usage stats:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get daily usage data for charting purposes
+ *
+ * @param days - Number of days to include (1-90, default: 30)
+ * @returns Promise with daily usage data
+ */
+export async function getDailyUsage(days: number = 30): Promise<DailyUsageResponse> {
+  const apiUrl = getApiUrl(API_CONFIG.endpoints.statsUsageDaily);
+  const url = `${apiUrl}?days=${days}`;
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Daily usage request failed with status ${response.status}`);
+    }
+
+    return (await response.json()) as DailyUsageResponse;
+  } catch (error) {
+    console.error("Error fetching daily usage:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get today's real-time usage data
+ *
+ * @returns Promise with today's usage data
+ */
+export async function getTodayUsage(): Promise<TodayUsageResponse> {
+  const apiUrl = getApiUrl(API_CONFIG.endpoints.statsUsageToday);
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Today's usage request failed with status ${response.status}`);
+    }
+
+    return (await response.json()) as TodayUsageResponse;
+  } catch (error) {
+    console.error("Error fetching today's usage:", error);
+    throw error;
+  }
 }

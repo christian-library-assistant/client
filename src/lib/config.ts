@@ -12,6 +12,10 @@ export const API_CONFIG = {
     sessionDelete: "/query-agent-session",
     authors: "/authors",
     works: "/works",
+    // Stats endpoints
+    statsUsage: "/stats/usage",
+    statsUsageDaily: "/stats/usage/daily",
+    statsUsageToday: "/stats/usage/today",
   },
 
   // Request configuration

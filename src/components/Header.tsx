@@ -77,6 +77,20 @@ export function Header() {
             )}
             Dataset
           </Link>
+          <Link
+            href="/stats"
+            className={cn(
+              "text-sm font-medium transition-colors relative",
+              isActive("/stats")
+                ? "text-primary"
+                : "text-foreground/80 hover:text-primary"
+            )}
+          >
+            {isActive("/stats") && (
+              <span className="absolute -bottom-1.5 left-0 right-0 h-0.5 bg-primary rounded-full" />
+            )}
+            Stats
+          </Link>
 
           <ThemeToggle />
 
